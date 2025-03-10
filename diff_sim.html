@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Diffusion Simulation – Discrete Sizes with Clamped Concentrations</title>
+  <style>
+    body { margin: 0; padding: 20px; background: #fff; font-family: sans-serif; }
+    canvas { display: block; background: #fff; }
+    
+    /* Plotly graph styling */
+    #plotlyGraph {
+      position: absolute;
+      left: 920px;
+      top: 410px;
+      width: 258px;
+      height: 288px; 
+      background-color: white;
+      border: 1px solid black;
+    }
+    
+    /* Parameter sliders panel */
+    #paramInputs {
+      position: absolute;
+      left: 920px;
+      top: 70px;  
+      width: 260px;
+      background-color: #eee;
+      border: 1px solid #aaa;
+      padding: 10px;
+      box-sizing: border-box;
+      text-align: left;
+    }
+    #paramInputs .paramRow { 
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    #paramInputs label { 
+      width: 100px;
+      text-align: center;  
+    }
+    .greenParam { color: rgb(34,139,34); }
+    .purpleParam { color: rgb(128,0,128); }
+    /* Discrete sliders:
+         Hole size: 1-4; Molecule size: 1-3.
+    */
+    #paramInputs input[type="range"] { 
+      width: 80px;
+      margin: 0 5px;
+    }
+    /* Display discrete label */
+    #paramInputs .paramVal {
+      width: 60px;
+      text-align: center;
+    }
+    .buttonContainer {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+    }
+    
+    /* Concentration panel styling */
+    #concentrationInputs {
+      position: absolute;
+      left: 920px;
+      top: 290px;
+      width: 260px;
+      background-color: #eee;
+      border: 1px solid #aaa;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    #concentrationHeader {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    #concentrationInputs table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+    }
+    #concentrationInputs td {
+      padding: 4px;
+      vertical-align: middle;
+    }
+    /* Concentration labels: "A" and "B" in green or purple */
+    #concentrationInputs label.green { 
+      color: rgb(34,139,34);
+    }
+    #concentrationInputs label.purple { 
+      color: rgb(128,0,128);
+    }
+    #concentrationInputs input[type="number"] {
+      width: 70px;
+      text-align: center;
+    }
+  </style>
+  
+  <!-- Include Plotly -->
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+  
+<div style="position: relative;">
+  <!-- Main canvas -->
+  <canvas id="simCanvas" width="1300" height="800"></canvas>
+  
+  <!-- Parameter Sliders -->
+  <div id="paramInputs">
+    <!-- Hole Size: 1 = Small, 2 = Medium, 3 = Large, 4 = XL -->
+    <div class="paramRow">
+      <label for="rangeHoleSize">Hole Size</label>
+      <input type="range" id="rangeHoleSize" min="1" max="4" step="1" value="2">
+      <span class="paramVal" id="valHoleSize">Medium</span>
+    </div>
+    <div class="paramRow">
+      <label for="rangeHoleNum">Hole Count</label>
+      <input type="range" id="rangeHoleNum" min="0" max="10" step="1" value="3">
+      <span class="paramVal" id="valHoleNum">3</span>
+    </div>
+    <div class="paramRow">
+      <label for="rangeGreenSpeed" class="greenParam">Speed</label>
+      <input type="range" id="rangeGreenSpeed" min="1" max="10" step="1" value="2">
+      <span class="paramVal" id="valGreenSpeed">2</span>
+    </div>
+    <div class="paramRow">
+      <label for="rangePurpleSpeed" class="purpleParam">Speed</label>
+      <input type="range" id="rangePurpleSpeed" min="1" max="10" step="1" value="3">
+      <span class="paramVal" id="valPurpleSpeed">3</span>
+    </div>
+    <!-- Molecule size: Label now "Size" -->
+    <div class="paramRow">
+      <label for="rangeGreenRadius" class="greenParam">Size</label>
+      <input type="range" id="rangeGreenRadius" min="1" max="3" step="1" value="1">
+      <span class="paramVal" id="valGreenRadius">Small</span>
+    </div>
+    <div class="paramRow">
+      <label for="rangePurpleRadius" class="purpleParam">Size</label>
+      <input type="range" id="rangePurpleRadius" min="1" max="3" step="1" value="2">
+      <span class="paramVal" id="valPurpleRadius">Medium</span>
+    </div>
+    <div class="paramRow">
+      <div class="buttonContainer">
+        <button id="toggleSim">Start</button>
+        <button id="resetSimBtn">Reset</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Concentration Inputs -->
+  <div id="concentrationInputs">
+    <div id="concentrationHeader">Initial Concentrations</div>
+    <table>
+      <tr>
+        <td>
+          <label for="inputGreenA" class="green">A</label>
+          <input type="number" id="inputGreenA" value="100" min="0" max="1000">
+        </td>
+        <td>
+          <label for="inputGreenB" class="green">B</label>
+          <input type="number" id="inputGreenB" value="50" min="0" max="1000">
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <label for="inputPurpleA" class="purple">A</label>
+          <input type="number" id="inputPurpleA" value="50" min="0" max="1000">
+        </td>
+        <td>
+          <label for="inputPurpleB" class="purple">B</label>
+          <input type="number" id="inputPurpleB" value="100" min="0" max="1000">
+        </td>
+      </tr>
+    </table>
+  </div>
+  
+  <!-- Plotly Graph -->
+  <div id="plotlyGraph"></div>
+</div>
+  
+<script>
+  // --- Helper mapping functions ---
+  function mapHoleSize(level) {
+    // 1 = Small (10px gap), 2 = Medium (20px), 3 = Large (30px), 4 = XL (40px)
+    if (level == 1) return 10;
+    if (level == 2) return 20;
+    if (level == 3) return 30;
+    if (level == 4) return 40;
+    return 20;
+  }
+  function holeSizeLabel(level) {
+    if (level == 1) return "Small";
+    if (level == 2) return "Medium";
+    if (level == 3) return "Large";
+    if (level == 4) return "XL";
+    return "";
+  }
+  function mapMoleculeSize(level) {
+    // 1 = Small (10px diameter), 2 = Medium (20px), 3 = Large (30px)
+    return level * 10;
+  }
+  function sizeLabel(level) {
+    if (level == 1) return "Small";
+    if (level == 2) return "Medium";
+    if (level == 3) return "Large";
+    return "";
+  }
+  
+  /* ---------------- Canvas & Simulation Setup ---------------- */
+  const WIDTH = 1200;
+  const HEIGHT = 700;
+  const SIM_WIDTH = WIDTH - 300; // 900px simulation area
+  const PADDING_TOP = 80;
+  const canvas = document.getElementById('simCanvas');
+  const ctx = canvas.getContext('2d');
+  
+  /* ---------------- Colors & Constants ---------------- */
+  const WHITE = "rgb(255,255,255)";
+  const BLACK = "rgb(0,0,0)";
+  const FAINT_GRAY = "rgb(220,220,220)";
+  const FOREST_GREEN = "rgb(34,139,34)";
+  const PURPLE = "rgb(128,0,128)";
+  const RED = "rgb(255,0,0)";
+  const BORDER_THICKNESS = 10;
+  const membrane_width = 10;
+  const membrane_x = Math.floor(SIM_WIDTH / 2); // 450px
+  
+  /* ---------------- Global Parameter Variables ---------------- */
+  let holeLevel = 2; // default Medium (1-4)
+  let hole_size = mapHoleSize(holeLevel);
+  let num_holes = 3;
+  let GREEN_SPEED = 2;
+  let PURPLE_SPEED = 3;
+  let greenMoleculeLevel = 1; // default Small (1-3)
+  let purpleMoleculeLevel = 2; // default Medium (1-3)
+  let GREEN_RADIUS = mapMoleculeSize(greenMoleculeLevel) / 2;
+  let PURPLE_RADIUS = mapMoleculeSize(purpleMoleculeLevel) / 2;
+  
+  /* ---------------- Simulation State ---------------- */
+  let simulation_running = false;
+  let adjusting_starting_values = true;
+  let previewSpawned = false;
+  let show_green = true, show_purple = true;
+  let warning_message = "", warning_expiry = 0;
+  let startTime = 0;
+  let green_ratios = [], purple_ratios = [], time_points = [];
+  
+  /* ---------------- Arrays for Particles and Holes ---------------- */
+  let holes = [];
+  let particles = [];
+  
+  /* ---------------- Global Variable to Store the Run’s INITIAL Concentrations ---------------- */
+  let runInitialConcs = null;
+  
+  /* ---------------- Utility Functions ---------------- */
+  function clampInt(val, minv, maxv) {
+    let n = parseInt(val, 10);
+    if (isNaN(n)) n = minv;
+    if (n < minv) n = minv;
+    if (n > maxv) n = maxv;
+    return n;
+  }
+  
+  // New helper: clamp concentration values to 1000.
+  function clampConcentration(val) {
+    let num = parseInt(val, 10);
+    if (isNaN(num) || num < 0) return 0;
+    return num > 1000 ? 1000 : num;
+  }
+  
+  function readParamSliders() {
+    // Read discrete slider values.
+    holeLevel = clampInt(document.getElementById("rangeHoleSize").value, 1, 4);
+    hole_size = mapHoleSize(holeLevel);
+    num_holes = clampInt(document.getElementById("rangeHoleNum").value, 0, 10);
+    GREEN_SPEED = clampInt(document.getElementById("rangeGreenSpeed").value, 1, 10);
+    PURPLE_SPEED = clampInt(document.getElementById("rangePurpleSpeed").value, 1, 10);
+    greenMoleculeLevel = clampInt(document.getElementById("rangeGreenRadius").value, 1, 3);
+    GREEN_RADIUS = mapMoleculeSize(greenMoleculeLevel) / 2;
+    purpleMoleculeLevel = clampInt(document.getElementById("rangePurpleRadius").value, 1, 3);
+    PURPLE_RADIUS = mapMoleculeSize(purpleMoleculeLevel) / 2;
+    
+    document.getElementById("valHoleSize").textContent = holeSizeLabel(holeLevel);
+    document.getElementById("valHoleNum").textContent = num_holes;
+    document.getElementById("valGreenSpeed").textContent = GREEN_SPEED;
+    document.getElementById("valPurpleSpeed").textContent = PURPLE_SPEED;
+    document.getElementById("valGreenRadius").textContent = sizeLabel(greenMoleculeLevel);
+    document.getElementById("valPurpleRadius").textContent = sizeLabel(purpleMoleculeLevel);
+  }
+  
+  function generateHoles() {
+    holes = [];
+    if (num_holes === 0) return;
+    let gap = Math.floor((HEIGHT - PADDING_TOP) / (num_holes + 1));
+    for (let i = 1; i <= num_holes; i++) {
+      holes.push(PADDING_TOP + gap * i);
+    }
+  }
+  
+  function updateParticleParams() {
+    for (let p of particles) {
+      p.update_speed();
+      p.update_radius();
+    }
+  }
+  
+  /* ---------------- Slider Event Handlers ---------------- */
+  ["rangeHoleSize", "rangeHoleNum", "rangeGreenSpeed", "rangePurpleSpeed", "rangeGreenRadius", "rangePurpleRadius"]
+  .forEach(id => {
+    let slider = document.getElementById(id);
+    slider.addEventListener("input", () => {
+      if (simulation_running) {
+        warning_message = "Reset to change parameters!";
+        warning_expiry = performance.now() + 2000;
+        if (id === "rangeHoleSize") slider.value = holeLevel;
+        else if (id === "rangeHoleNum") slider.value = num_holes;
+        else if (id === "rangeGreenSpeed") slider.value = GREEN_SPEED;
+        else if (id === "rangePurpleSpeed") slider.value = PURPLE_SPEED;
+        else if (id === "rangeGreenRadius") slider.value = greenMoleculeLevel;
+        else if (id === "rangePurpleRadius") slider.value = purpleMoleculeLevel;
+        return;
+      }
+      readParamSliders();
+      generateHoles();
+      updateParticleParams();
+      // Do not re-spawn preview on slider moves.
+    });
+  });
+  
+  /* ---------------- Concentration Input Event Handlers ---------------- */
+  ["inputGreenA", "inputGreenB", "inputPurpleA", "inputPurpleB"].forEach(id => {
+    let input = document.getElementById(id);
+    input.addEventListener("change", () => {
+      // Clamp the value to 1000.
+      input.value = clampConcentration(input.value);
+      if (!simulation_running) {
+        spawnPreviewParticlesPreview();
+      }
+    });
+  });
+  
+  /* ---------------- Particle Class ---------------- */
+  class Particle {
+    constructor(x, y, color, sizeLevel) {
+      this.x = x;
+      this.y = y;
+      this.color = color;
+      this.sizeLevel = sizeLevel; // 1,2,3 for molecule size
+      this.radius = mapMoleculeSize(sizeLevel) / 2;
+      if (color === FOREST_GREEN) {
+        this.speed = GREEN_SPEED;
+      } else {
+        this.speed = PURPLE_SPEED;
+      }
+      let signX = (Math.random() < 0.5) ? -1 : 1;
+      let signY = (Math.random() < 0.5) ? -1 : 1;
+      this.vx = signX * this.speed;
+      this.vy = signY * this.speed;
+    }
+    randomize_bounce(max_offset = 5) {
+      let offsetRad = max_offset * Math.PI / 180;
+      let offset = (Math.random() * 2 * offsetRad) - offsetRad;
+      let angle = Math.atan2(this.vy, this.vx) + offset;
+      this.vx = Math.cos(angle) * this.speed;
+      this.vy = Math.sin(angle) * this.speed;
+    }
+    move() {
+      this.x += this.vx;
+      this.y += this.vy;
+      let wallOffset = 10;
+      let leftBound = wallOffset,
+          rightBound = SIM_WIDTH - wallOffset,
+          topBound = PADDING_TOP + wallOffset,
+          bottomBound = HEIGHT - wallOffset;
+      if (this.y - this.radius < topBound) {
+        this.y = topBound + this.radius;
+        this.vy *= -1;
+        this.randomize_bounce();
+      }
+      if (this.y + this.radius > bottomBound) {
+        this.y = bottomBound - this.radius;
+        this.vy *= -1;
+        this.randomize_bounce();
+      }
+      if (this.x - this.radius < leftBound) {
+        this.x = leftBound + this.radius;
+        this.vx *= -1;
+        this.randomize_bounce();
+      }
+      if (this.x + this.radius > rightBound) {
+        this.x = rightBound - this.radius;
+        this.vx *= -1;
+        this.randomize_bounce();
+      }
+      // Check if particle is attempting to cross the membrane.
+      let ml = membrane_x - membrane_width / 2;
+      let mr = membrane_x + membrane_width / 2;
+      let tolerance = 2; // 2px leeway
+      if (this.x < membrane_x && (this.x + this.radius + this.vx) >= ml) {
+        let allowed = false;
+        if (this.sizeLevel <= holeLevel) {
+          for (let hc of holes) {
+            if (this.y >= (hc - hole_size/2 - tolerance) && this.y <= (hc + hole_size/2 + tolerance)) {
+              allowed = true;
+              break;
+            }
+          }
+        }
+        if (!allowed) {
+          this.x = ml - this.radius;
+          this.vx = -Math.abs(this.vx);
+          this.randomize_bounce();
+        }
+      } else if (this.x > membrane_x && (this.x - this.radius + this.vx) <= mr) {
+        let allowed = false;
+        if (this.sizeLevel <= holeLevel) {
+          for (let hc of holes) {
+            if (this.y >= (hc - hole_size/2 - tolerance) && this.y <= (hc + hole_size/2 + tolerance)) {
+              allowed = true;
+              break;
+            }
+          }
+        }
+        if (!allowed) {
+          this.x = mr + this.radius;
+          this.vx = Math.abs(this.vx);
+          this.randomize_bounce();
+        }
+      }
+      let angle = Math.atan2(this.vy, this.vx);
+      this.vx = Math.cos(angle) * this.speed;
+      this.vy = Math.sin(angle) * this.speed;
+      let s = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+      if (s !== 0) {
+        this.vx = (this.vx/s) * this.speed;
+        this.vy = (this.vy/s) * this.speed;
+      }
+    }
+    update_speed() {
+      if (this.color === FOREST_GREEN) {
+        this.speed = GREEN_SPEED;
+      } else {
+        this.speed = PURPLE_SPEED;
+      }
+      let s = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+      if (s !== 0) {
+        this.vx = (this.vx/s) * this.speed;
+        this.vy = (this.vy/s) * this.speed;
+      }
+    }
+    update_radius() {
+      this.radius = mapMoleculeSize(this.sizeLevel) / 2;
+    }
+    draw(ctx) {
+      if (this.color === FOREST_GREEN && !show_green) return;
+      if (this.color === PURPLE && !show_purple) return;
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, 2*Math.PI);
+      ctx.fill();
+    }
+  }
+  
+  /* ---------------- Spawn Preview Particles for Run Mode ---------------- */
+  function spawnPreviewParticles() {
+    readParamSliders();
+    generateHoles();
+    particles = [];
+  
+    let GA = runInitialConcs["Green A"];
+    let GB = runInitialConcs["Green B"];
+    let PA = runInitialConcs["Purple A"];
+    let PB = runInitialConcs["Purple B"];
+  
+    let wallOffset = 10;
+    let leftBound = wallOffset, rightBound = SIM_WIDTH - wallOffset;
+    let topBound = PADDING_TOP + wallOffset, bottomBound = HEIGHT - wallOffset;
+    let ml = membrane_x - membrane_width / 2;
+    let mr = membrane_x + membrane_width / 2;
+  
+    function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+    function spawnOne(color, side, sizeLevel) {
+      let r = mapMoleculeSize(sizeLevel) / 2;
+      let xMin, xMax;
+      if (side === "A") { xMin = leftBound + r; xMax = ml - r; }
+      else { xMin = mr + r; xMax = rightBound - r; }
+      let yMin = topBound + r, yMax = bottomBound - r;
+      if (xMin > xMax || yMin > yMax) return null;
+      let rx = randomInt(xMin, xMax);
+      let ry = randomInt(yMin, yMax);
+      return new Particle(rx, ry, color, sizeLevel);
+    }
+    for (let i = 0; i < GA; i++) {
+      let p = spawnOne(FOREST_GREEN, "A", greenMoleculeLevel);
+      if (p) particles.push(p);
+    }
+    for (let i = 0; i < PA; i++) {
+      let p = spawnOne(PURPLE, "A", purpleMoleculeLevel);
+      if (p) particles.push(p);
+    }
+    for (let i = 0; i < GB; i++) {
+      let p = spawnOne(FOREST_GREEN, "B", greenMoleculeLevel);
+      if (p) particles.push(p);
+    }
+    for (let i = 0; i < PB; i++) {
+      let p = spawnOne(PURPLE, "B", purpleMoleculeLevel);
+      if (p) particles.push(p);
+    }
+  
+    previewSpawned = true;
+  }
+  
+  /* ---------------- Spawn Preview Particles for Preview Mode ---------------- */
+  function spawnPreviewParticlesPreview() {
+    readParamSliders();
+    generateHoles();
+    particles = [];
+  
+    let GA = parseInt(document.getElementById("inputGreenA").value) || 0;
+    let GB = parseInt(document.getElementById("inputGreenB").value) || 0;
+    let PA = parseInt(document.getElementById("inputPurpleA").value) || 0;
+    let PB = parseInt(document.getElementById("inputPurpleB").value) || 0;
+  
+    let wallOffset = 10;
+    let leftBound = wallOffset, rightBound = SIM_WIDTH - wallOffset;
+    let topBound = PADDING_TOP + wallOffset, bottomBound = HEIGHT - wallOffset;
+    let ml = membrane_x - membrane_width / 2;
+    let mr = membrane_x + membrane_width / 2;
+  
+    function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+    function spawnOne(color, side, sizeLevel) {
+      let r = mapMoleculeSize(sizeLevel) / 2;
+      let xMin, xMax;
+      if (side === "A") { xMin = leftBound + r; xMax = ml - r; }
+      else { xMin = mr + r; xMax = rightBound - r; }
+      let yMin = topBound + r, yMax = bottomBound - r;
+      if (xMin > xMax || yMin > yMax) return null;
+      let rx = randomInt(xMin, xMax);
+      let ry = randomInt(yMin, yMax);
+      return new Particle(rx, ry, color, sizeLevel);
+    }
+    for (let i = 0; i < GA; i++) {
+      let p = spawnOne(FOREST_GREEN, "A", greenMoleculeLevel);
+      if (p) particles.push(p);
+    }
+    for (let i = 0; i < PA; i++) {
+      let p = spawnOne(PURPLE, "A", purpleMoleculeLevel);
+      if (p) particles.push(p);
+    }
+    for (let i = 0; i < GB; i++) {
+      let p = spawnOne(FOREST_GREEN, "B", greenMoleculeLevel);
+      if (p) particles.push(p);
+    }
+    for (let i = 0; i < PB; i++) {
+      let p = spawnOne(PURPLE, "B", purpleMoleculeLevel);
+      if (p) particles.push(p);
+    }
+  
+    previewSpawned = true;
+  }
+  
+  /* ---------------- Reset Simulation ---------------- */
+  function resetSim() {
+    if (runInitialConcs !== null) {
+      document.getElementById("inputGreenA").value = runInitialConcs["Green A"];
+      document.getElementById("inputGreenB").value = runInitialConcs["Green B"];
+      document.getElementById("inputPurpleA").value = runInitialConcs["Purple A"];
+      document.getElementById("inputPurpleB").value = runInitialConcs["Purple B"];
+    }
+  
+    simulation_running = false;
+    adjusting_starting_values = true;
+    previewSpawned = false;
+    particles = [];
+    holes = [];
+    green_ratios = [];
+    purple_ratios = [];
+    time_points = [];
+    startTime = 0;
+  
+    initPlotlyGraph();
+    enableAllFields(true);
+  
+    document.getElementById("concentrationHeader").textContent = "Initial Concentrations";
+    spawnPreviewParticlesPreview();
+  }
+  
+  /* ---------------- Enable/Disable Input Fields ---------------- */
+  function enableAllFields(enable) {
+    ["rangeHoleSize", "rangeHoleNum", "rangeGreenSpeed", "rangePurpleSpeed", "rangeGreenRadius", "rangePurpleRadius"]
+      .forEach(id => { document.getElementById(id).disabled = !enable; });
+    ["inputGreenA", "inputGreenB", "inputPurpleA", "inputPurpleB"]
+      .forEach(id => { document.getElementById(id).disabled = !enable; });
+  }
+  
+  /* ---------------- Plotly Graph Setup ---------------- */
+  function initPlotlyGraph() {
+    let traceG = { x: [], y: [], mode: 'lines', name: 'Green Ratio', line: { color: 'green' } };
+    let traceP = { x: [], y: [], mode: 'lines', name: 'Purple Ratio', line: { color: 'purple' } };
+    let layout = {
+      xaxis: { title: 'Time (s)' },
+      yaxis: { title: 'Ratio A/B', rangemode: 'tozero' },
+      margin: { l: 50, r: 10, t: 40, b: 40 },
+      showlegend: false,
+      shapes: [
+        { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 1, y1: 1,
+          line: { color: 'black', width: 2, dash: 'dash' } }
+      ]
+    };
+    Plotly.newPlot('plotlyGraph', [traceG, traceP], layout, { responsive: true });
+  }
+  
+  function updatePlotlyGraph() {
+    Plotly.restyle('plotlyGraph', { x: [time_points], y: [green_ratios] }, [0]);
+    Plotly.restyle('plotlyGraph', { x: [time_points], y: [purple_ratios] }, [1]);
+  }
+  
+  /* ---------------- Main Simulation Loop ---------------- */
+  let lastFrame = 0;
+  function gameLoop(timestamp) {
+    let dt = timestamp - lastFrame;
+    lastFrame = timestamp;
+  
+    ctx.fillStyle = WHITE;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  
+    // Draw simulation borders
+    ctx.fillStyle = BLACK;
+    ctx.fillRect(0, PADDING_TOP - BORDER_THICKNESS, SIM_WIDTH, BORDER_THICKNESS);
+    ctx.fillRect(0, HEIGHT - BORDER_THICKNESS, SIM_WIDTH, BORDER_THICKNESS);
+    ctx.fillRect(0, PADDING_TOP, BORDER_THICKNESS, HEIGHT - PADDING_TOP - BORDER_THICKNESS);
+    ctx.fillRect(SIM_WIDTH - BORDER_THICKNESS, PADDING_TOP, BORDER_THICKNESS, HEIGHT - PADDING_TOP - BORDER_THICKNESS);
+  
+    // Draw the membrane with holes
+    let ml = membrane_x - membrane_width/2;
+    ctx.fillRect(ml, PADDING_TOP, membrane_width, HEIGHT - PADDING_TOP);
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = WHITE;
+    for (let hc of holes) {
+      ctx.fillRect(ml, hc - (hole_size/2), membrane_width, hole_size);
+    }
+    ctx.restore();
+  
+    // Draw simulation title above the membrane
+    ctx.font = "30px sans-serif";
+    ctx.fillStyle = BLACK;
+    ctx.textAlign = "center";
+    ctx.fillText("Diffusion Simulation", membrane_x, PADDING_TOP - 30);
+  
+    // Center the large "A" and "B" labels in each compartment.
+    ctx.font = "200px sans-serif";
+    ctx.fillStyle = FAINT_GRAY;
+    let centerY = (PADDING_TOP + HEIGHT) / 2;
+    let aCenterX = (0 + membrane_x) / 2;
+    let bCenterX = (membrane_x + SIM_WIDTH) / 2;
+    ctx.fillText("A", aCenterX, centerY);
+    ctx.fillText("B", bCenterX, centerY);
+  
+    if (performance.now() < warning_expiry && warning_message) {
+      ctx.font = "20px sans-serif";
+      ctx.fillStyle = RED;
+      ctx.fillText(warning_message, SIM_WIDTH + 10, 420);
+    }
+  
+    if (particles.length > 0) {
+      if (simulation_running) {
+        if (startTime === 0) startTime = timestamp;
+  
+        let greenA = particles.filter(p => p.color === FOREST_GREEN && p.x < membrane_x).length;
+        let greenB = particles.filter(p => p.color === FOREST_GREEN && p.x >= membrane_x).length;
+        let purpleA = particles.filter(p => p.color === PURPLE && p.x < membrane_x).length;
+        let purpleB = particles.filter(p => p.color === PURPLE && p.x >= membrane_x).length;
+  
+        // Update concentration input boxes in real time:
+        document.getElementById("inputGreenA").value = greenA;
+        document.getElementById("inputGreenB").value = greenB;
+        document.getElementById("inputPurpleA").value = purpleA;
+        document.getElementById("inputPurpleB").value = purpleB;
+  
+        let gRatio = (greenB !== 0) ? (greenA / greenB) : greenA;
+        let pRatio = (purpleB !== 0) ? (purpleA / purpleB) : purpleA;
+        green_ratios.push(gRatio);
+        purple_ratios.push(pRatio);
+  
+        let tSec = (timestamp - startTime) / 1000;
+        time_points.push(tSec);
+        updatePlotlyGraph();
+  
+        for (let p of particles) p.move();
+      }
+      for (let p of particles) p.draw(ctx);
+    }
+  
+    requestAnimationFrame(gameLoop);
+  }
+  requestAnimationFrame(gameLoop);
+  
+  /* ---------------- Keyboard and Button Interactions ---------------- */
+  window.addEventListener("keydown", evt => {
+    if (evt.key === "r") {
+      resetSim();
+      document.getElementById("toggleSim").textContent = "Start";
+    } else if (evt.key === " ") {
+      evt.preventDefault();
+      if (simulation_running) {
+        simulation_running = false;
+        document.getElementById("toggleSim").textContent = "Start";
+      } else {
+        if (adjusting_starting_values) {
+          runInitialConcs = {
+            "Green A": parseInt(document.getElementById("inputGreenA").value) || 0,
+            "Green B": parseInt(document.getElementById("inputGreenB").value) || 0,
+            "Purple A": parseInt(document.getElementById("inputPurpleA").value) || 0,
+            "Purple B": parseInt(document.getElementById("inputPurpleB").value) || 0
+          };
+          adjusting_starting_values = false;
+          spawnPreviewParticles();
+          document.getElementById("concentrationHeader").textContent = "Current Concentrations";
+          enableAllFields(false);
+          initPlotlyGraph();
+        }
+        simulation_running = true;
+        document.getElementById("toggleSim").textContent = "Stop";
+      }
+    }
+  });
+  
+  document.getElementById("toggleSim").addEventListener("click", function() {
+    if (simulation_running) {
+      simulation_running = false;
+      this.textContent = "Start";
+    } else {
+      if (adjusting_starting_values) {
+        runInitialConcs = {
+          "Green A": parseInt(document.getElementById("inputGreenA").value) || 0,
+          "Green B": parseInt(document.getElementById("inputGreenB").value) || 0,
+          "Purple A": parseInt(document.getElementById("inputPurpleA").value) || 0,
+          "Purple B": parseInt(document.getElementById("inputPurpleB").value) || 0
+        };
+        adjusting_starting_values = false;
+        spawnPreviewParticles();
+        document.getElementById("concentrationHeader").textContent = "Current Concentrations";
+        enableAllFields(false);
+        initPlotlyGraph();
+      }
+      simulation_running = true;
+      this.textContent = "Stop";
+    }
+  });
+  
+  document.getElementById("resetSimBtn").addEventListener("click", function() {
+    resetSim();
+    document.getElementById("toggleSim").textContent = "Start";
+  });
+  
+  /* ---------------- On Page Load: Show Preview Dots in Preview Mode ---------------- */
+  spawnPreviewParticlesPreview();
+  initPlotlyGraph();
+</script>
+</body>
+</html>
